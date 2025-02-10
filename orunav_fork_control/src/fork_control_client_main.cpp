@@ -34,9 +34,9 @@ int main(int argc, char **argv)
   ros::Publisher forkcmd_pub;
   std::string fork_command_topic; 
   if (robot_id >=0)
-      fork_command_topic = orunav_generic::getRobotTopicName(robot_id, "/fork/command");
+      fork_command_topic = orunav_generic::getRobotTopicName(robot_id, "/control/fork/command");
   else
-      fork_command_topic = std::string("/fork/command");
+      fork_command_topic = std::string("/control/fork/command");
   
   
   forkcmd_pub = nh.advertise<orunav_msgs::ForkCommand>(fork_command_topic, 1);

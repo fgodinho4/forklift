@@ -9,8 +9,8 @@
 #ifndef WORLDVISUALIZER_H_
 #define WORLDVISUALIZER_H_
 
-#include "opencv/cv.h"
-#include "opencv/highgui.h"
+#include "opencv2/opencv.hpp"
+#include "opencv2/highgui.hpp"
 #ifdef _WIN32 // windows
 #include <boost/thread/thread.hpp>
 #else  // linux
@@ -44,7 +44,7 @@ private:
 	static unsigned short int B[5];
 
 	/** The image to be displayed */
-	IplImage* worldDisplayImg_;
+	cv::Mat worldDisplayImg_;
 
 	/** Mutex to avoid deadlocks when two threads try to work on the image */
 	boost::mutex update_mutex_;

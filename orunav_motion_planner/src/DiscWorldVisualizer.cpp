@@ -7,6 +7,8 @@
  */
 
 #include "orunav_motion_planner/DiscWorldVisualizer.h"
+#include <opencv2/opencv.hpp>
+
 
 
 unsigned short int DiscWorldVisualizer::R[5] = {10, 160, 240,  25,   0};
@@ -20,11 +22,12 @@ DiscWorldVisualizer::DiscWorldVisualizer(int xCels, int yCels, int scale) {
 	imgXsize_ = xTotCels_ * scaleFactor_;
 	imgYsize_ = yTotCels_ * scaleFactor_;
 	// create the image that will represent the world
-	worldDisplayImg_ = cvCreateImage(cvSize(imgXsize_, imgYsize_), IPL_DEPTH_8U, 3);
+	worldDisplayImg_ = cv::Mat(imgYsize_, imgXsize_, CV_8UC3);
 	// white background for clarity reasons
-	cvRectangle(worldDisplayImg_, cvPoint(0, 0), cvPoint(imgXsize_, imgYsize_), cvScalar(255, 255, 255, 0), CV_FILLED);
+	cv::rectangle(worldDisplayImg_, cv::Point(0, 0), cv::Point(imgXsize_, imgYsize_), cv::Scalar(255, 255, 255), cv::FILLED);
 	// create the window to display the image
-	cvNamedWindow("World", CV_WINDOW_AUTOSIZE);
+	cv::namedWindow("World", cv::WINDOW_AUTOSIZE);
+
 
 	// prepare the thread for execution
 	threadStop_ = false;
@@ -36,10 +39,10 @@ DiscWorldVisualizer::DiscWorldVisualizer(int xCels, int yCels, int scale) {
 	boost::mutex::scoped_lock lock(update_mutex_);
 
 	for (int x = 0; x <= xTotCels_ * scaleFactor_; x += scaleFactor_) {
-		cvLine(worldDisplayImg_, cvPoint(x, 0), cvPoint(x, imgYsize_), cvScalar(211, 211, 211, 0), 1, 8, 0);
+		cv::line(worldDisplayImg_, cv::Point(x, 0), cv::Point(x, imgYsize_), cv::Scalar(211, 211, 211), 1, 8, 0);
 	}
 	for (int y = 0; y <= yTotCels_ * scaleFactor_; y += scaleFactor_) {
-		cvLine(worldDisplayImg_, cvPoint(0, y), cvPoint(imgXsize_, y), cvScalar(211, 211, 211, 0), 1, 8, 0);
+		cv::line(worldDisplayImg_, cv::Point(0, y), cv::Point(imgXsize_, y), cv::Scalar(211, 211, 211), 1, 8, 0);
 	}
 }
 
@@ -47,27 +50,26 @@ DiscWorldVisualizer::~DiscWorldVisualizer() {
 	// check is saving the final image is required
 	stopVisualization();
 	if (WP::SAVE_FINAL_VISUALIZATION_TO_FILE) {
-		cvSaveImage((WP::LOG_FILE.append(".PNG")).c_str(), worldDisplayImg_);
+		cv::imwrite((WP::LOG_FILE.append(".PNG")), worldDisplayImg_);
 	}
 	visualizedThread_.join();
-	cvDestroyWindow("World");
-	cvReleaseImage(&worldDisplayImg_);
+	cv::destroyWindow("World");
+	//cvReleaseImage(&worldDisplayImg_);//tirar
 }
 
 void DiscWorldVisualizer::resetVisualizer() {
 	// create the image that will represent the world
-	worldDisplayImg_ = cvCreateImage(cvSize(imgXsize_, imgYsize_), IPL_DEPTH_8U, 3);
-	cvRectangle(worldDisplayImg_, cvPoint(0, 0), cvPoint(imgXsize_, imgYsize_), cvScalar(255, 255, 255, 0),
-			CV_FILLED);
+	worldDisplayImg_ = cv::Mat(imgYsize_, imgXsize_, CV_8UC3); // Para imagem em 3 canais
+	cv::rectangle(worldDisplayImg_, cv::Point(0, 0), cv::Point(imgXsize_, imgYsize_), cv::Scalar(255, 255, 255), cv::FILLED);
 
 	// lock the mutex before writing
 	boost::mutex::scoped_lock lock(update_mutex_);
 
 	for (int x = 0; x <= xTotCels_ * scaleFactor_; x += scaleFactor_) {
-		cvLine(worldDisplayImg_, cvPoint(x, 0), cvPoint(x, imgYsize_), cvScalar(211, 211, 211, 0), 1, 8, 0);
+		cv::line(worldDisplayImg_, cv::Point(x, 0), cv::Point(x, imgYsize_), cv::Scalar(211, 211, 211, 0), 1, 8, 0);
 	}
 	for (int y = 0; y <= yTotCels_ * scaleFactor_; y += scaleFactor_) {
-		cvLine(worldDisplayImg_, cvPoint(0, y), cvPoint(imgXsize_, y), cvScalar(211, 211, 211, 0), 1, 8, 0);
+		cv::line(worldDisplayImg_, cv::Point(0, y), cv::Point(imgXsize_, y), cv::Scalar(211, 211, 211), 1, 8, 0);
 	}
 }
 
@@ -101,7 +103,8 @@ void DiscWorldVisualizer::drawGoal(Configuration* conf, int vehicleID) {
 	this->drawConfiguration(conf, R[ind]/2, G[ind]/2, B[ind]/2);
 	if (WP::SAVE_FINAL_VISUALIZATION_TO_FILE && WP::LOG_LEVEL >= 10) {
 		std::string name = std::string(WP::LOG_FILE);
-		cvSaveImage((name.append(".").append(std::to_string(vehicleID)).append(".PNG")).c_str(), worldDisplayImg_);
+		cv::imwrite((name.append(".").append(std::to_string(vehicleID)).append(".PNG")).c_str(), worldDisplayImg_);
+
 	}
 }
 
@@ -119,18 +122,21 @@ void DiscWorldVisualizer::display() {
 	while (threadStop_ == false) {
 		{
 			boost::mutex::scoped_lock lock(update_mutex_);
-			cvShowImage("World", worldDisplayImg_);
+			cv::imshow("World", worldDisplayImg_);
+
 		}
 
 		if (WP::SAVE_FINAL_VISUALIZATION_TO_FILE && WP::LOG_LEVEL >= 10) {
 			if (counter % 20 == 0) {
 				std::string name = std::string(WP::LOG_FILE);
-				cvSaveImage((name.append(std::to_string(counter)).append(".PNG")).c_str(), worldDisplayImg_);
+				cv::imwrite((name.append(std::to_string(counter)).append(".PNG")).c_str(), worldDisplayImg_);
+
 			}
 			counter ++;
 		}
 
-		cvWaitKey(50);
+		cv::waitKey(50);
+
 		boost::posix_time::milliseconds workTime(50);
 		boost::this_thread::sleep(workTime);
 	}
@@ -370,8 +376,9 @@ void DiscWorldVisualizer::drawLine(double xfrom, double yfrom, double xto, doubl
 	yto = imgYsize_ - yto;
 	// lock the mutex
 	boost::mutex::scoped_lock lock(update_mutex_);
-	cvLine(worldDisplayImg_, cvPoint((int) xfrom, (int) yfrom), cvPoint((int) xto, (int) yto),
-			cvScalar(R, G, B), 1, 8, 0);
+	cv::line(worldDisplayImg_, cv::Point((int)xfrom, (int)yfrom), cv::Point((int)xto, (int)yto),
+         cv::Scalar(R, G, B), 1, 8);
+
 }
 
 void DiscWorldVisualizer::drawDot(double x, double y, double radius, int R, int G, int B) {
@@ -379,7 +386,7 @@ void DiscWorldVisualizer::drawDot(double x, double y, double radius, int R, int 
 	y = imgYsize_ - y;
 	// lock the mutex before writing
 	boost::mutex::scoped_lock lock(update_mutex_);
-	cvCircle(worldDisplayImg_, cvPoint((int) x, (int) y), radius, cvScalar(R, G, B), CV_FILLED);
+	cv::circle(worldDisplayImg_, cv::Point((int)x, (int)y), radius, cv::Scalar(R, G, B), cv::FILLED);
 }
 
 void DiscWorldVisualizer::drawFilledRectangle(double xfrom, double yfrom, double xto, double yto, int R,
@@ -389,8 +396,9 @@ void DiscWorldVisualizer::drawFilledRectangle(double xfrom, double yfrom, double
 	yto = imgYsize_ - yto;
 	// lock the mutex before writing
 	boost::mutex::scoped_lock lock(update_mutex_);
-	cvRectangle(worldDisplayImg_, cvPoint((int) xfrom, (int) yfrom), cvPoint((int) xto, (int) yto),
-			cvScalar(R, G, B), CV_FILLED);
+	cv::rectangle(worldDisplayImg_, cv::Point((int)xfrom, (int)yfrom), cv::Point((int)xto, (int)yto),
+              cv::Scalar(R, G, B), -1);
+
 }
 
 void DiscWorldVisualizer::drawRectangle(double xfrom, double yfrom, double xto, double yto, int R, int G,
@@ -400,7 +408,8 @@ void DiscWorldVisualizer::drawRectangle(double xfrom, double yfrom, double xto, 
 	yto = imgYsize_ - yto;
 	// lock the mutex before writing
 	boost::mutex::scoped_lock lock(update_mutex_);
-	cvRectangle(worldDisplayImg_, cvPoint((int) xfrom, (int) yfrom), cvPoint((int) xto, (int) yto),
-			cvScalar(R, G, B), 1, 8, 0);
+	cv::rectangle(worldDisplayImg_, cv::Point((int)xfrom, (int)yfrom), cv::Point((int)xto, (int)yto),
+              cv::Scalar(R, G, B), 1, 8, 0);
+
 }
 
